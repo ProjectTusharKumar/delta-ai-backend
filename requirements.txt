@@ -1,0 +1,10 @@
+Flask
+Flask-Cors
+python-dotenv
+spacy
+pandas
+pymongo>=4.12.0
+rapidfuzz
+requests
+Werkzeug
+gunicorn

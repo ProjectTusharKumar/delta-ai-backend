@@ -352,21 +352,34 @@ def upload_file():
         print(error_msg)
         return jsonify({"status": "error", "message": error_msg}), 400
     try:
-        df = pd.read_excel(file)
+        # Use openpyxl engine explicitly
+        df = pd.read_excel(file, engine="openpyxl")
+    except Exception as read_error:
+        error_msg = f"Excel file reading error: {read_error}"
+        print(error_msg)
+        return jsonify({"status": "error", "message": error_msg}), 500
+
+    try:
         df.columns = [col.lower() for col in df.columns]
-        logging.debug(f"DataFrame columns after lowercasing: {df.columns.tolist()}")
-        print(f"DataFrame columns: {df.columns.tolist()}")
         records = df.to_dict(orient="records")
+    except Exception as conversion_error:
+        error_msg = f"DataFrame conversion error: {conversion_error}"
+        print(error_msg)
+        return jsonify({"status": "error", "message": error_msg}), 500
+
+    try:
         db = get_database()
         collection = db[table_name]
         collection.insert_many(records)
-        print(f"Data uploaded to collection '{table_name}' successfully!")
-        return jsonify({"status": "success", "message": f"Data uploaded to collection '{table_name}' successfully!"})
-    except Exception as e:
-        error_msg = f"Failed to upload data: {str(e)}"
-        logging.error(error_msg)
+    except Exception as db_error:
+        error_msg = f"Database insertion error: {db_error}"
         print(error_msg)
         return jsonify({"status": "error", "message": error_msg}), 500
+
+    success_msg = f"Data uploaded to collection '{table_name}' successfully!"
+    print(success_msg)
+    return jsonify({"status": "success", "message": success_msg})
+
 
 @app.route("/api/chat", methods=["POST"])
 def chat():

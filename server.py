@@ -25,7 +25,7 @@ print("spaCy model loaded: en_core_web_sm")
 
 # Initialize Flask app and enable CORS (adjust for production)
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/*": {"origins": "https://dealta-ai.onrender.com"}})
 print("Flask app initialized and CORS enabled.")
 
 # MongoDB configuration

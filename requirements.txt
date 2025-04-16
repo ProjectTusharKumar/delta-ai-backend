@@ -11,3 +11,5 @@ gunicorn
 openpyxl
 transformers
 sentence_transformers
+
+

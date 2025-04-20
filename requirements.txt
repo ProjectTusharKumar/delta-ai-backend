@@ -13,4 +13,4 @@ faiss-cpu
 transformers
 sentencepiece
 sentence_transformers
-importlib
+numpy

@@ -14,3 +14,4 @@ transformers
 sentencepiece
 sentence_transformers
 numpy
+hf_xet

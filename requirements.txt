@@ -9,5 +9,8 @@ requests
 Werkzeug
 gunicorn
 openpyxl
+faiss-cpu
 transformers
+sentencepiece
 sentence_transformers
+importlib

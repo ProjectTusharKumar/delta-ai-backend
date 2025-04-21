@@ -7,7 +7,6 @@ import spacy
 import pandas as pd
 import numpy as np
 import faiss
-import requests
 # import dateparser
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -32,44 +31,15 @@ print("Logging is configured at DEBUG level.")
 nlp = spacy.load("en_core_web_sm")
 print("spaCy model loaded: en_core_web_sm")
 
-# Hugging Face API Token
-API_TOKEN = os.getenv("HF_API_TOKEN")
-
-# Helper for Hugging Face T5 Inference API
-def hf_t5_generate(prompt, model="t5-small"):
-    api_url = f"https://api-inference.huggingface.co/models/{model}"
-    headers = {"Authorization": f"Bearer {API_TOKEN}"}
-    payload = {"inputs": prompt}
-    response = requests.post(api_url, headers=headers, json=payload)
-    response.raise_for_status()
-    result = response.json()
-    # The output is a list of dicts with 'generated_text'
-    if isinstance(result, list) and 'generated_text' in result[0]:
-        return result[0]['generated_text']
-    return result
-
-# Helper for Hugging Face MiniLM Embedding API
-def hf_minilm_embed(text, model="sentence-transformers/all-MiniLM-L6-v2"):
-    api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model}"
-    headers = {"Authorization": f"Bearer {API_TOKEN}"}
-    payload = {"inputs": text}
-    response = requests.post(api_url, headers=headers, json=payload)
-    response.raise_for_status()
-    result = response.json()
-    # The output is a nested list: [ [embedding floats...] ]
-    if isinstance(result, list) and isinstance(result[0], list):
-        return result[0]
-    return result
-
 # Load transformer T5 model and tokenizer
-print("Loading transformer model t5-small...")
-tokenizer = T5Tokenizer.from_pretrained("t5-small")
-model = T5ForConditionalGeneration.from_pretrained("t5-small")
-print("Transformer model t5-small loaded.")
+print("Loading transformer model T5-base...")
+tokenizer = T5Tokenizer.from_pretrained("t5-base")
+model = T5ForConditionalGeneration.from_pretrained("t5-base")
+print("Transformer model T5-base loaded.")
 
 # Load SentenceTransformer for embeddings
-print("Loading embedding model (all-MiniLM-L6-v2")
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+print("Loading embedding model (all-mpnet-base-v2")
+embedding_model = SentenceTransformer('all-mpnet-base-v2')
 print("Embedding model loaded.")
 
 # Initialize Flask app and enable CORS
@@ -134,17 +104,18 @@ SPELLING_CORRECTIONS = {
     "past projetc": "past projects",
     "completed prject": "completed projects",
     "lst year project": "last year projects",
-    "dateofjoining": "doj"
+    "dateofjoining": "doj",
+    "employees": "employee"
 }
+
+IGNORED_WORDS = {"both", "me", "can", "is", "and", "the", "for", "to", "of", "on", "please", ",", "retrieve", "fetch", "tell", "show", "whats", "summarize", "who"}
+NON_PERSON_WORDS = {"phone","Project Mu", "dob", "date", "number", "details", "projects", "salary", "attendance", "skills","Who", "history"}
 
 def correct_spelling(word):
     corrected = SPELLING_CORRECTIONS.get(word.lower(), word)
     logging.debug(f"Correcting '{word}' to '{corrected}'")
     print(f"Correcting '{word}' to '{corrected}'")
     return corrected
-
-IGNORED_WORDS = {"both", "me", "can", "is", "and", "the", "for", "to", "of", "on", "please", ",", "retrieve", "fetch", "tell", "show", "whats", "summarize", "who"}
-NON_PERSON_WORDS = {"phone","Project Mu", "dob", "date", "number", "details", "projects", "salary", "attendance", "skills","Who", "history"}
 
 def extract_names(query):
     print(f"Extracting names from query: {query}")
@@ -177,6 +148,7 @@ SPECIAL_schema_name = {
     "working on recently": "currently on",
     "ongoing ones": "currently on",
     "ongoing projects": "currently on",
+    "completed": "completed projects",
     "join date": "doj",
     "hired": "doj",
     "earning": "salary",
@@ -639,7 +611,9 @@ def chat():
                         f"Convert the following natural language request into a MongoDB query "
                         f"for the 'employees' collection: '{q}' Return only the JSON."
                     )
-                    generated_query_str = hf_t5_generate(prompt)
+                    input_ids = tokenizer.encode(prompt, return_tensors="pt")
+                    output_ids = model.generate(input_ids, max_length=150)
+                    generated_query_str = tokenizer.decode(output_ids[0], skip_special_tokens=True)
                     try:
                         mongo_query = json.loads(generated_query_str)
                         result = list(coll.find(mongo_query, {"_id": 0}))
@@ -661,7 +635,9 @@ def chat():
                     f"Convert the following natural language request into a MongoDB query "
                     f"for the 'employees' collection: '{q}' Return only the JSON."
                 )
-                generated_query_str = hf_t5_generate(prompt)
+                input_ids = tokenizer.encode(prompt, return_tensors="pt")
+                output_ids = model.generate(input_ids, max_length=150)
+                generated_query_str = tokenizer.decode(output_ids[0], skip_special_tokens=True)
                 try:
                     mongo_query = json.loads(generated_query_str)
                     result = list(coll.find(mongo_query, {"_id": 0}))
